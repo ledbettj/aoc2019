@@ -45,22 +45,21 @@ impl IntcodeComputer {
 
         for i in range {
             match self.ops[i] {
-                1 => {
-                    let i1 = self.ops[i + 1];
-                    let i2 = self.ops[i + 2];
-                    let target = self.ops[i + 3];
-                    self.ops[target] = self.ops[i1] + self.ops[i2];
-                },
-                2 => {
-                    let i1 = self.ops[i + 1];
-                    let i2 = self.ops[i + 2];
-                    let target = self.ops[i + 3];
-                    self.ops[target] = self.ops[i1] * self.ops[i2];
-                },
-                _ => { break; }
+                1 => self.eval_instruction(i, |a, b| a + b),
+                2 => self.eval_instruction(i, |a, b| a * b),
+                _ => break
             }
         };
         self
+    }
+
+    /// Given the index of an instruction (opcode), call the given function and store
+    /// the result at the appropriate place.
+    fn eval_instruction<F: Fn(usize, usize) -> usize>(&mut self, index: usize, f: F) {
+        let i1 = self.ops[index + 1];
+        let i2 = self.ops[index + 2];
+        let target = self.ops[index + 3];
+        self.ops[target] = f(self.ops[i1], self.ops[i2]);
     }
 
     /// Given a target, determine the inputs that must go at positions
