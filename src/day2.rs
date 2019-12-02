@@ -2,16 +2,19 @@ use std::num::ParseIntError;
 
 const INPUT : &'static str  = include_str!("../inputs/day2.txt");
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 struct IntcodeComputer {
     pub ops: Vec<usize>
 }
 
 impl IntcodeComputer {
+    /// Create a new computer from a list of instructions.
     pub fn new(ops: Vec<usize>) -> IntcodeComputer {
         IntcodeComputer { ops: ops }
     }
 
+    /// Create a new computer, if possible, from an input string of comma delimited
+    /// integers.
     pub fn parse(line: &str) -> Result<IntcodeComputer, ParseIntError> {
         let ops = line
             .trim()
@@ -22,6 +25,7 @@ impl IntcodeComputer {
         Ok(IntcodeComputer::new(ops))
     }
 
+    /// Evaluate the instructions contained in the computer.
     pub fn eval(&mut self) -> &IntcodeComputer {
         let range = (0..self.ops.len()).step_by(4);
 
@@ -44,9 +48,29 @@ impl IntcodeComputer {
         };
         self
     }
+
+    /// Given a target, determine the inputs that must go at positions
+    /// 1 and 2 in the instruction list to cause target to be stored at
+    /// position 0.
+    /// If no combination is found, returns None.
+    pub fn solve(&self, target: usize) -> Option<(usize, usize)> {
+
+        for i in 0..99 {
+            for j in 0..99 {
+                let mut working = self.clone();
+                working.ops[1] = i;
+                working.ops[2] = j;
+                working.eval();
+
+                if working.ops[0] == target {
+                    return Some((i, j))
+                }
+            }
+
+        };
+        None
+    }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -88,6 +112,17 @@ mod tests {
         i.eval();
 
         assert_eq!(i.ops[0], 7210630);
+    }
+
+    #[test]
+    fn part2_solution() {
+        let cpu = IntcodeComputer::parse(INPUT).expect("Failed to parse input");
+
+        let result = cpu.solve(19690720);
+        assert_eq!(result.is_some(), true);
+
+        let (noun, verb) = result.unwrap();
+        assert_eq!(noun * 100 + verb, 3892);
     }
 
 }
