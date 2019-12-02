@@ -25,6 +25,20 @@ impl IntcodeComputer {
         Ok(IntcodeComputer::new(ops))
     }
 
+    pub fn noun(&mut self, noun: usize) -> &mut IntcodeComputer {
+        self.ops[1] = noun;
+        self
+    }
+
+    pub fn verb(&mut self, verb: usize) -> &mut IntcodeComputer {
+        self.ops[2] = verb;
+        self
+    }
+
+    pub fn output(&self) -> usize {
+        self.ops[0]
+    }
+
     /// Evaluate the instructions contained in the computer.
     pub fn eval(&mut self) -> &IntcodeComputer {
         let range = (0..self.ops.len()).step_by(4);
@@ -58,11 +72,14 @@ impl IntcodeComputer {
         for i in 0..99 {
             for j in 0..99 {
                 let mut working = self.clone();
-                working.ops[1] = i;
-                working.ops[2] = j;
-                working.eval();
 
-                if working.ops[0] == target {
+                let output = working
+                    .noun(i)
+                    .verb(j)
+                    .eval()
+                    .output();
+
+                if output == target {
                     return Some((i, j))
                 }
             }
@@ -106,12 +123,9 @@ mod tests {
     #[test]
     fn part1_solution() {
         let mut i = IntcodeComputer::parse(INPUT).expect("Failed to parse input");
-        i.ops[1] = 12;
-        i.ops[2] = 2;
+        let output = i.noun(12).verb(2).eval().output();
 
-        i.eval();
-
-        assert_eq!(i.ops[0], 7210630);
+        assert_eq!(output, 7210630);
     }
 
     #[test]
