@@ -1,11 +1,13 @@
-use std::collections::HashSet;
+use std::collections::{HashSet,HashMap};
 
 const INPUT : &'static str = include_str!("../inputs/day3.txt");
 
 type Point = (isize, isize);
 
+
 struct Wire {
-    points: Vec<Point>
+    points: Vec<Point>,
+    costs: HashMap<Point, usize>
 }
 
 impl Wire {
@@ -28,7 +30,12 @@ impl Wire {
             last = *points.last().unwrap();
         }
 
-        Wire { points: points }
+        let mut cost_map = HashMap::new();
+        for (index, &p) in points.iter().enumerate() {
+            cost_map.entry(p)
+                .or_insert(index + 1);
+        }
+        Wire { points: points, costs: cost_map }
     }
 
     fn generate_points(from: Point, dir: Point, count: usize) -> Vec<Point> {
@@ -41,6 +48,10 @@ impl Wire {
         }
 
         results
+    }
+
+    pub fn cost(&self, point: Point) -> usize {
+        self.costs[&point]
     }
 
     pub fn intersections(&self, other: &Wire) -> Vec<Point> {
@@ -58,12 +69,23 @@ impl Wire {
 
     pub fn closest_intersection_distance(&self, other: &Wire) -> isize {
         let intersects = self.intersections(other);
-        println!("intersections: {:?}", intersects);
+
         intersects
             .iter()
             .map(|&(x, y)| x.abs() + y.abs())
             .min()
             .expect("Do not intersect?")
+    }
+
+    pub fn lowest_cost_intersection_cost(&self, other: &Wire) -> usize {
+        let intersects = self.intersections(other);
+
+        intersects
+            .iter()
+            .map(|&p| self.cost(p) + other.cost(p))
+            .min()
+            .expect("Do not intersect?")
+
     }
 }
 
@@ -94,5 +116,25 @@ mod tests {
         let w2 = Wire::parse("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7");
 
         assert_eq!(w1.closest_intersection_distance(&w2), 135);
+    }
+
+    #[test]
+    fn cost_works() {
+        let w1 = Wire::parse("R75,D30,R83,U83,L12,D49,R71,U7,L72");
+        let w2 = Wire::parse("U62,R66,U55,R34,D71,R55,D58,R83");
+
+        assert_eq!(w1.lowest_cost_intersection_cost(&w2), 610);
+
+        let w1 = Wire::parse("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51");
+        let w2 = Wire::parse("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7");
+
+        assert_eq!(w1.lowest_cost_intersection_cost(&w2), 410);
+    }
+
+    #[test]
+    fn part2_solution() {
+        let wires = INPUT.lines().map(|line| Wire::parse(line)).collect::<Vec<Wire>>();
+
+        assert_eq!(wires[0].lowest_cost_intersection_cost(&wires[1]), 14228);
     }
 }
