@@ -2,71 +2,78 @@ use std::collections::{HashSet,HashMap};
 
 const INPUT : &'static str = include_str!("../inputs/day3.txt");
 
+
 type Point = (isize, isize);
 
-
+/// We store the list of points the wire contains, along with the "cost",
+/// Which is the count of how many steps it takes to get to the given point as
+/// they are generated.  If a point is included twice, it's cost is the lower cost.
 struct Wire {
-    points: Vec<Point>,
     costs: HashMap<Point, usize>
 }
 
 impl Wire {
     pub fn parse(input: &str) -> Wire {
-        let mut points : Vec<Point> = vec![];
         let mut last = (0, 0);
+        let mut cost_map = HashMap::new();
+        let mut cost = 1;
 
         for instr in input.split(",") {
             let mut chars = instr.chars();
             let dir = chars.next().unwrap();
-            let mag = chars.collect::<String>().parse::<usize>().unwrap();
-            let more = match dir {
-                'U' => Wire::generate_points(last, (0,  1), mag),
-                'D' => Wire::generate_points(last, (0, -1), mag),
-                'L' => Wire::generate_points(last, (-1, 0), mag),
-                'R' => Wire::generate_points(last, (1,  0), mag),
-                _ => unreachable!()
+
+            let mag = chars
+                .collect::<String>()
+                .parse::<usize>()
+                .expect("Failed to parse magnitude of line!");
+
+            let vec = match dir {
+                'U' => (0,  1),
+                'D' => (0, -1),
+                'L' => (-1, 0),
+                'R' => (1,  0),
+                c => panic!("Unexpected direction indicator: {:?}", c)
             };
-            points.extend(more.iter());
-            last = *points.last().unwrap();
+
+            Wire::generate_points(last, vec, mag, |point| {
+                cost_map.entry(point).or_insert(cost);
+                cost += 1;
+                last = point;
+            });
         }
 
-        let mut cost_map = HashMap::new();
-        for (index, &p) in points.iter().enumerate() {
-            cost_map.entry(p)
-                .or_insert(index + 1);
-        }
-        Wire { points: points, costs: cost_map }
+        Wire { costs: cost_map }
     }
 
-    fn generate_points(from: Point, dir: Point, count: usize) -> Vec<Point> {
+    /// Given a starting point, a direction unit vector, and a count,
+    /// Call the given function with all the points on this line.
+    fn generate_points<F>(from: Point, dir: Point, count: usize, mut f: F)
+    where F: FnMut(Point) {
         let mut last = from;
-        let mut results = vec![];
         for _ in 0..count {
             let next = (last.0 + dir.0, last.1 + dir.1);
-            results.push(next);
+            f(next);
             last = next;
-        }
-
-        results
+        };
     }
 
     pub fn cost(&self, point: Point) -> usize {
         self.costs[&point]
     }
 
+    /// Find the collection of points that intersection between two Wires.
     pub fn intersections(&self, other: &Wire) -> Vec<Point> {
-        let mine  = self.points
-            .iter()
+        let mine  = self.costs.keys()
             .cloned()
             .collect::<HashSet<Point>>();
-        let yours = other.points
-            .iter()
+        let yours = other.costs.keys()
             .cloned()
             .collect::<HashSet<Point>>();
 
         mine.intersection(&yours).cloned().collect::<Vec<Point>>()
     }
 
+    /// Find the closest intersection distance (by manhattan distance) of two Wires.
     pub fn closest_intersection_distance(&self, other: &Wire) -> isize {
         let intersects = self.intersections(other);
 
@@ -77,6 +84,7 @@ impl Wire {
             .expect("Do not intersect?")
     }
 
+    /// Find the closest intersection cost (by sum of point cost) of two Wires.
     pub fn lowest_cost_intersection_cost(&self, other: &Wire) -> usize {
         let intersects = self.intersections(other);
 
@@ -106,7 +114,7 @@ mod tests {
         let w1 = Wire::parse("R8,U5,L5,D3");
         let w2 = Wire::parse("U7,R6,D4,L4");
         assert_eq!(w1.closest_intersection_distance(&w2), 6);
-        
+
         let w1 = Wire::parse("R75,D30,R83,U83,L12,D49,R71,U7,L72");
         let w2 = Wire::parse("U62,R66,U55,R34,D71,R55,D58,R83");
 
