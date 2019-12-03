@@ -137,5 +137,4 @@ mod tests {
         let (noun, verb) = result.unwrap();
         assert_eq!(noun * 100 + verb, 3892);
     }
-
 }

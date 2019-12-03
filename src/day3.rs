@@ -1,104 +1,69 @@
+use std::collections::HashSet;
 
 const INPUT : &'static str = include_str!("../inputs/day3.txt");
 
-#[derive(Debug,PartialEq)]
-struct Line {
-    p1: (isize, isize),
-    p2: (isize, isize)
-}
+type Point = (isize, isize);
 
 struct Wire {
-    lines: Vec<Line>
+    points: Vec<Point>
 }
-
-impl Line {
-    pub fn contains_point(&self, pt: (isize, isize)) -> bool {
-        (pt.0 >= self.p1.0 && pt.0 <= self.p2.0 && pt.1 >= self.p1.1 && pt.1 <= self.p2.1) ||
-        (pt.0 >= self.p2.0 && pt.0 <= self.p1.0 && pt.1 >= self.p2.1 && pt.1 <= self.p1.1)
-    }
-
-    pub fn points(&self) -> Vec<(isize, isize)> {
-        let x_diff = self.p2.0 - self.p1.0;
-        let y_diff = self.p2.1 - self.p1.1;
-
-        let x_off = if x_diff > 0 {
-            1
-        } else if x_diff < 0 {
-            -1
-        } else {
-            0
-        };
-
-
-        let y_off = if y_diff > 0 {
-            1
-        } else if y_diff < 0 {
-            -1
-        } else {
-            0
-        };
-
-        let mut results = vec![];
-        let mut point = self.p1;
-
-        while point != self.p2 {
-            results.push(point);
-            point = (point.0 + x_off, point.1 + y_off)
-        };
-        results.push(self.p2);
-        results
-    }
-
-    pub fn intersect_at(&self, other: &Line) -> Vec<(isize, isize)> {
-        self
-            .points()
-            .into_iter()
-            .filter(|&p| other.contains_point(p))
-//            .inspect(|&p| println!("{:?} intersects {:?} at {:?}", self, other, p))
-            .collect()
-    }
-}
-
 
 impl Wire {
     pub fn parse(input: &str) -> Wire {
-        let mut lines : Vec<Line> = vec![];
-        let mut last_point = (0, 0);
+        let mut points : Vec<Point> = vec![];
+        let mut last = (0, 0);
 
         for instr in input.split(",") {
             let mut chars = instr.chars();
             let dir = chars.next().unwrap();
-            let mag = chars.collect::<String>().parse::<isize>().unwrap();
-            let next_point = match dir {
-                'U' => (last_point.0, last_point.1 + mag),
-                'D' => (last_point.0, last_point.1 - mag),
-                'L' => (last_point.0 - mag, last_point.1),
-                'R' => (last_point.0 + mag, last_point.1),
+            let mag = chars.collect::<String>().parse::<usize>().unwrap();
+            let more = match dir {
+                'U' => Wire::generate_points(last, (0,  1), mag),
+                'D' => Wire::generate_points(last, (0, -1), mag),
+                'L' => Wire::generate_points(last, (-1, 0), mag),
+                'R' => Wire::generate_points(last, (1,  0), mag),
                 _ => unreachable!()
             };
-            lines.push(Line { p1: last_point, p2: next_point });
-            last_point = next_point;
+            points.extend(more.iter());
+            last = *points.last().unwrap();
         }
 
-        Wire { lines: lines }
+        Wire { points: points }
     }
 
-    pub fn closest_intersect_distance(&self, other: &Wire) -> isize {
-        let mut intersects : Vec<(isize, isize)> = vec![];
+    fn generate_points(from: Point, dir: Point, count: usize) -> Vec<Point> {
+        let mut last = from;
+        let mut results = vec![];
+        for _ in 0..count {
+            let next = (last.0 + dir.0, last.1 + dir.1);
+            results.push(next);
+            last = next;
+        }
 
-        for l1 in &self.lines {
-            for l2 in &other.lines {
-                intersects.extend(l1.intersect_at(&l2).into_iter());
-            }
-        };
-        println!("intersects: {:?}", intersects);
+        results
+    }
 
+    pub fn intersections(&self, other: &Wire) -> Vec<Point> {
+        let mine  = self.points
+            .iter()
+            .cloned()
+            .collect::<HashSet<Point>>();
+        let yours = other.points
+            .iter()
+            .cloned()
+            .collect::<HashSet<Point>>();
+
+        mine.intersection(&yours).cloned().collect::<Vec<Point>>()
+    }
+
+    pub fn closest_intersection_distance(&self, other: &Wire) -> isize {
+        let intersects = self.intersections(other);
+        println!("intersections: {:?}", intersects);
         intersects
             .iter()
-            .filter(|&p| p != &(0, 0))
             .map(|&(x, y)| x.abs() + y.abs())
             .min()
-            .expect("Does not intersect??")
+            .expect("Do not intersect?")
     }
 }
 
@@ -111,23 +76,23 @@ mod tests {
     fn part1_solution() {
         let wires = INPUT.lines().map(|line| Wire::parse(line)).collect::<Vec<Wire>>();
 
-        assert_eq!(wires[0].closest_intersect_distance(&wires[1]), 0);
+        assert_eq!(wires[0].closest_intersection_distance(&wires[1]), 1285);
     }
 
     #[test]
     fn intersect_works() {
         let w1 = Wire::parse("R8,U5,L5,D3");
         let w2 = Wire::parse("U7,R6,D4,L4");
-        assert_eq!(w1.closest_intersect_distance(&w2), 6);
+        assert_eq!(w1.closest_intersection_distance(&w2), 6);
         
         let w1 = Wire::parse("R75,D30,R83,U83,L12,D49,R71,U7,L72");
         let w2 = Wire::parse("U62,R66,U55,R34,D71,R55,D58,R83");
 
-        assert_eq!(w1.closest_intersect_distance(&w2), 159);
+        assert_eq!(w1.closest_intersection_distance(&w2), 159);
 
         let w1 = Wire::parse("R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51");
         let w2 = Wire::parse("U98,R91,D20,R16,D67,R40,U7,R15,U6,R7");
 
-        assert_eq!(w1.closest_intersect_distance(&w2), 135);
+        assert_eq!(w1.closest_intersection_distance(&w2), 135);
     }
 }
