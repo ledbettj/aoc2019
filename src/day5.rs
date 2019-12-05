@@ -50,17 +50,13 @@ impl Program {
             let instr = self.parse_instruction(self.bytes[i] as usize);
             match instr.opcode {
                 OpCode::Add => {
-                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
-                    self.bytes[v3 as usize] = v1 + v2;
+                    self.bytes[v3 as usize] = self.eval_binary(&instr, i as usize, |a, b| a + b);
                     i += 4;
                 },
                 OpCode::Multiply => {
-                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
-                    self.bytes[v3 as usize] = v1 * v2;
+                    self.bytes[v3 as usize] = self.eval_binary(&instr, i as usize, |a, b| a * b);
                     i += 4;
                 },
                 OpCode::Input => {
@@ -74,35 +70,27 @@ impl Program {
                     i += 2;
                 },
                 OpCode::JmpTrue => {
-                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
-                    if v1 != 0 {
-                        i = v2 as usize;
-                    } else {
-                        i += 3;
-                    }
+                    i = self.eval_binary(&instr, i as usize, |a, b|{
+                        if a != 0 { b as usize } else { i + 3 }
+                    });
                 },
                 OpCode::JmpFalse => {
-                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
-                    if v1 == 0 {
-                        i = v2 as usize;
-                    } else {
-                        i += 3;
-                    }
+                    i = self.eval_binary(&instr, i as usize, |a, b|{
+                        if a == 0 { b as usize } else { i + 3 }
+                    });
                 },
                 OpCode::LessThan => {
-                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
-                    self.bytes[v3 as usize] = if v1 < v2 { 1 } else { 0 };
+                    self.bytes[v3 as usize] = self.eval_binary(&instr, i as usize, |a, b|{
+                        if a < b { 1 } else { 0 }
+                    });
                     i += 4;
                 },
                 OpCode::Equals => {
-                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
-                    self.bytes[v3 as usize] = if v1 == v2 { 1 } else { 0 };
+                    self.bytes[v3 as usize] = self.eval_binary(&instr, i as usize, |a, b|{
+                        if a == b { 1 } else { 0 }
+                    });
                     i += 4;
                 }
                 OpCode::Halt => break
@@ -110,6 +98,14 @@ impl Program {
         };
 
         results
+    }
+
+    fn eval_binary<F, T>(&mut self, instr: &Instruction, index: usize, f: F) -> T
+        where F : Fn(isize, isize) -> T
+    {
+        let v1 = self.load_argument(self.bytes[index + 1], instr.modes[0]);
+        let v2 = self.load_argument(self.bytes[index + 2], instr.modes[1]);
+        f(v1, v2)
     }
 
     pub fn load_argument(&self, value: isize, mode: AddressMode) -> isize {
