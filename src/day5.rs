@@ -21,7 +21,7 @@ impl Program {
         Ok(Program { bytes: p })
     }
 
-    pub fn execute(&mut self) {
+    pub fn execute(&mut self, input: isize) {
         let mut i = 0;
 
         while i < self.bytes.len() {
@@ -48,8 +48,8 @@ impl Program {
                 // input
                 3 => {
                     let v1 = self.bytes[i + 1];
-                    println!("providing 1 to input at index {}", v1);
-                    self.bytes[v1 as usize] = 1;
+                    println!("providing {} to input at index {}", input, v1);
+                    self.bytes[v1 as usize] = input;
                     i += 2;
                 },
                 // output
@@ -58,6 +58,38 @@ impl Program {
                     println!("output: {}", v1);
                     i += 2;
                 },
+                5 => {
+                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
+                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
+                    if v1 != 0 {
+                        i = v2 as usize;
+                    } else {
+                        i += 3;
+                    }
+                },
+                6 => {
+                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
+                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
+                    if v1 == 0 {
+                        i = v2 as usize;
+                    } else {
+                        i += 3;
+                    }
+                },
+                7 => {
+                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
+                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
+                    let v3 = self.bytes[i + 3];
+                    self.bytes[v3 as usize] = if v1 < v2 { 1 } else { 0 };
+                    i += 4;
+                },
+                8 => {
+                    let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
+                    let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
+                    let v3 = self.bytes[i + 3];
+                    self.bytes[v3 as usize] = if v1 == v2 { 1 } else { 0 };
+                    i += 4;
+                }
                 99 => break,
                 d => { panic!("Illegal instruction: {}", d) }
             };
@@ -92,13 +124,19 @@ mod tests {
     #[test]
     fn p1_example() {
         let mut p = Program::parse("1002,4,3,4,33").expect("Failed to parse input");
-
-        p.execute();
-
+        p.execute(0);
     }
+
     #[test]
     fn p1_solution() {
         let mut p = Program::parse(INPUT).expect("Failed to parse input");
-        p.execute();
+//        p.execute(1);
     }
+
+    #[test]
+    fn p2_solution() {
+        let mut p = Program::parse(INPUT).expect("Failed to parse input");
+        p.execute(5);
+    }
+
 }
