@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate num_derive;
+
 #[allow(dead_code)]
 mod day1;
 #[allow(dead_code)]

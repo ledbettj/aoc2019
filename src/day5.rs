@@ -1,10 +1,31 @@
 use std::num::ParseIntError;
+use num_traits::cast::FromPrimitive;
 
 const INPUT : &'static str  = include_str!("../inputs/day5.txt");
 
+#[derive(Debug)]
 struct Instruction {
-    opcode: usize,
-    modes:  Vec<usize>
+    opcode: OpCode,
+    modes:  Vec<AddressMode>
+}
+
+#[derive(Debug,Clone,Copy,FromPrimitive)]
+enum AddressMode {
+    Position  = 0,
+    Immediate = 1
+}
+
+#[derive(Debug,Clone,Copy,FromPrimitive)]
+enum OpCode {
+    Add      = 1,
+    Multiply = 2,
+    Input    = 3,
+    Output   = 4,
+    JmpTrue  = 5,
+    JmpFalse = 6,
+    LessThan = 7,
+    Equals   = 8,
+    Halt     = 99
 }
 
 struct Program {
@@ -21,44 +42,38 @@ impl Program {
         Ok(Program { bytes: p })
     }
 
-    pub fn execute(&mut self, input: isize) {
+    pub fn execute(&mut self, input: isize) -> Vec<isize> {
         let mut i = 0;
+        let mut results = vec![];
 
         while i < self.bytes.len() {
             let instr = self.parse_instruction(self.bytes[i] as usize);
             match instr.opcode {
-                // add
-                1 => {
+                OpCode::Add => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
                     let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
-                    println!("storing {} + {} at index {}", v1, v2, v3);
                     self.bytes[v3 as usize] = v1 + v2;
                     i += 4;
                 },
-                // mul
-                2 => {
+                OpCode::Multiply => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
                     let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
-                    println!("storing {} * {} at index {}", v1, v2, v3);
                     self.bytes[v3 as usize] = v1 * v2;
                     i += 4;
                 },
-                // input
-                3 => {
+                OpCode::Input => {
                     let v1 = self.bytes[i + 1];
-                    println!("providing {} to input at index {}", input, v1);
                     self.bytes[v1 as usize] = input;
                     i += 2;
                 },
-                // output
-                4 => {
+                OpCode::Output => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
-                    println!("output: {}", v1);
+                    results.push(v1);
                     i += 2;
                 },
-                5 => {
+                OpCode::JmpTrue => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
                     let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     if v1 != 0 {
@@ -67,7 +82,7 @@ impl Program {
                         i += 3;
                     }
                 },
-                6 => {
+                OpCode::JmpFalse => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
                     let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     if v1 == 0 {
@@ -76,43 +91,49 @@ impl Program {
                         i += 3;
                     }
                 },
-                7 => {
+                OpCode::LessThan => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
                     let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
                     self.bytes[v3 as usize] = if v1 < v2 { 1 } else { 0 };
                     i += 4;
                 },
-                8 => {
+                OpCode::Equals => {
                     let v1 = self.load_argument(self.bytes[i + 1], instr.modes[0]);
                     let v2 = self.load_argument(self.bytes[i + 2], instr.modes[1]);
                     let v3 = self.bytes[i + 3];
                     self.bytes[v3 as usize] = if v1 == v2 { 1 } else { 0 };
                     i += 4;
                 }
-                99 => break,
-                d => { panic!("Illegal instruction: {}", d) }
+                OpCode::Halt => break
             };
-        }
+        };
+
+        results
     }
 
-    pub fn load_argument(&self, value: isize, mode: usize) -> isize {
+    pub fn load_argument(&self, value: isize, mode: AddressMode) -> isize {
         match mode {
-            0 => self.bytes[value as usize],
-            1 => value,
-            n => panic!("Illegal argument mode: {}", n)
+            AddressMode::Position  => self.bytes[value as usize],
+            AddressMode::Immediate => value
         }
     }
 
-    pub fn parse_instruction(&self, opcode: usize) -> Instruction  {
-        let instr = opcode % 100;
+    pub fn parse_instruction(&self, instr: usize) -> Instruction  {
+        let opcode = OpCode::from_usize(instr % 100).expect("Failed to parse OpCode");
+
         let modes = vec![
-            (opcode / 100)   % 10,
-            (opcode / 1000)  % 10,
-            (opcode / 10000) % 10,
-        ];
-        println!("instr = {} result = {}, {:?}", opcode, instr, modes);
-        Instruction { opcode: instr, modes: modes }
+            (instr / 100)    % 10,
+            (instr / 1_000)  % 10,
+            (instr / 10_000) % 10,
+        ].iter()
+            .map(|&v| AddressMode::from_usize(v).expect("Failed to parse AddressMode") )
+            .collect();
+
+        Instruction {
+            opcode: opcode,
+            modes:  modes
+        }
     }
 }
 
@@ -130,13 +151,15 @@ mod tests {
     #[test]
     fn p1_solution() {
         let mut p = Program::parse(INPUT).expect("Failed to parse input");
-//        p.execute(1);
+        let output = p.execute(1);
+        assert_eq!(output.last(), Some(&5074395_isize));
     }
 
     #[test]
     fn p2_solution() {
         let mut p = Program::parse(INPUT).expect("Failed to parse input");
-        p.execute(5);
+        let output = p.execute(5);
+        assert_eq!(output.last(), Some(&8346937_isize));
     }
 
 }
