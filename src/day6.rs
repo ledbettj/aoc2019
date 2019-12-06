@@ -58,6 +58,43 @@ impl OrbitMap {
 
         count
     }
+
+    pub fn parent_distance_from(&self, ancestor: &str, target: &str) -> Option<usize> {
+        let mut o = target;
+        let mut distance = 0;
+
+        loop {
+            if let Some(parent) = &self.map.get(o) {
+                if parent == &ancestor {
+                    break;
+                }
+                distance += 1;
+                o = parent;
+            } else {
+                return None;
+            }
+        }
+
+        println!("{} is {} from {}", ancestor, distance, target);
+        Some(distance)
+    }
+
+    pub fn transfer_distance(&self, from: &str, to: &str) -> Option<usize> {
+        // Goal is to find the lowest common ancenstor of `from` and `to`, and then sum
+        // distance from the ancestor to each node.
+
+        let mut o = to;
+
+        while let Some(parent) = &self.map.get(o) {
+            if let Some(d) = self.parent_distance_from(parent, from) {
+
+                return Some(d + self.parent_distance_from(parent, to).unwrap());
+            }
+            o = parent;
+        }
+
+        None
+    }
 }
 
 
@@ -81,6 +118,22 @@ mod tests {
         let m = OrbitMap::parse(INPUT).expect("Failed to parse Orbit Map");
 
         assert_eq!(m.total_orbit_count(), 160040);
+    }
+
+
+    #[test]
+    fn p2_example() {
+        let m = OrbitMap::parse("COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN")
+            .expect("Failed to parse Orbit Map");
+
+        assert_eq!(m.transfer_distance("YOU", "SAN"), Some(4));
+    }
+
+    #[test]
+    fn p2_solution() {
+        let m = OrbitMap::parse(INPUT).expect("Failed to parse Orbit Map");
+
+        assert_eq!(m.transfer_distance("YOU", "SAN"), Some(373));
 
     }
 }
