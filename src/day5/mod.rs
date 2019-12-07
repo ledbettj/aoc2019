@@ -1,7 +1,7 @@
 mod instruction;
 mod program;
 
-pub use program::Program;
+pub use program::{Program,ProgramState};
 pub use instruction::InvalidInstruction;
 
 const INPUT : &'static str  = include_str!("../../inputs/day5.txt");
