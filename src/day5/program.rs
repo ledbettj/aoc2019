@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 
 use super::instruction::*;
 
+#[derive(Debug,Clone,PartialEq)]
 pub struct Program {
     bytes: Vec<isize>
 }
@@ -17,9 +18,10 @@ impl Program {
         Ok(Program { bytes: p })
     }
 
-    pub fn execute(&mut self, input: isize) -> Result<Vec<isize>, InvalidInstruction> {
+    pub fn execute(&mut self, input: &Vec<isize>) -> Result<Vec<isize>, InvalidInstruction> {
         let mut i = 0;
         let mut results = vec![];
+        let mut inp = input.iter();
 
         while i < self.bytes.len() {
             let instr = Instruction::try_from(self.bytes[i] as usize)?;
@@ -37,7 +39,7 @@ impl Program {
                 },
                 OpCode::Input => {
                     let v1 = self.bytes[i + 1];
-                    self.bytes[v1 as usize] = input;
+                    self.bytes[v1 as usize] = *inp.next().expect("Prompted for input but no more left!");
                     i += 2;
                 },
                 OpCode::Output => {
