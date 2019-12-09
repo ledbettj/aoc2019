@@ -33,8 +33,8 @@ pub struct Instruction {
 
 #[derive(Debug,PartialEq)]
 pub enum InvalidInstruction {
-    InvalidOpcode,
-    InvalidAddressMode
+    InvalidOpcode(usize),
+    InvalidAddressMode(usize)
 }
 
 // Required for Error trait
@@ -51,7 +51,7 @@ impl TryFrom<usize> for Instruction {
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         let opcode = OpCode::from_usize(value % 100)
-            .ok_or(InvalidInstruction::InvalidOpcode)?;
+            .ok_or(InvalidInstruction::InvalidOpcode(value % 100))?;
 
         let mode_values = vec![
             (value / 100)    % 10,
@@ -62,7 +62,7 @@ impl TryFrom<usize> for Instruction {
         let modes = mode_values
             .iter()
             .map(|&v|{
-                AddressMode::from_usize(v).ok_or(InvalidInstruction::InvalidAddressMode)
+                AddressMode::from_usize(v).ok_or(InvalidInstruction::InvalidAddressMode(v))
             })
             .collect::<Result<Vec<AddressMode>, InvalidInstruction>>()?;
 
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn try_from_fail() {
-        assert_eq!(Instruction::try_from(3002), Err(InvalidInstruction::InvalidAddressMode));
-        assert_eq!(Instruction::try_from(10032), Err(InvalidInstruction::InvalidOpcode));
+        assert_eq!(Instruction::try_from(5002), Err(InvalidInstruction::InvalidAddressMode(5)));
+        assert_eq!(Instruction::try_from(10032), Err(InvalidInstruction::InvalidOpcode(32)));
     }
 }
