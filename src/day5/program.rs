@@ -13,7 +13,8 @@ pub enum ProgramState {
 #[derive(Debug,Clone,PartialEq)]
 pub struct Program {
     bytes: Vec<isize>,
-    ip:    usize
+    ip:    usize,
+    base:  isize
 }
 
 impl Program {
@@ -23,7 +24,7 @@ impl Program {
             .split(",")
             .map(|part| part.trim().parse::<isize>())
             .collect::<Result<Vec<isize>, ParseIntError>>()?;
-        Ok(Program { bytes: p, ip: 0 })
+        Ok(Program { bytes: p, ip: 0, base: 0 })
     }
 
     pub fn step(&mut self, input: Option<isize>) -> Result<ProgramState, InvalidInstruction> {
@@ -78,7 +79,12 @@ impl Program {
                     if a == b { 1 } else { 0 }
                 });
                 self.ip += 4;
-            }
+            },
+            OpCode::SetBase => {
+                let v1 = self.load_argument(self.bytes[self.ip + 1], instr.modes[0]);
+                self.base = v1;
+                self.ip += 2;
+            },
             OpCode::Halt => return Ok(ProgramState::Halted)
         };
 
@@ -90,7 +96,7 @@ impl Program {
         let mut inp = input.iter();
         let mut next_input : Option<isize> = None;
         loop {
-            let mut rc = self.step(next_input)?;
+            let rc = self.step(next_input)?;
             next_input = None;
 
             match rc {
@@ -117,7 +123,8 @@ impl Program {
     pub fn load_argument(&self, value: isize, mode: AddressMode) -> isize {
         match mode {
             AddressMode::Position  => self.bytes[value as usize],
-            AddressMode::Immediate => value
+            AddressMode::Immediate => value,
+            AddressMode::Relative  => self.bytes[(self.base + value) as usize]
         }
     }
 }

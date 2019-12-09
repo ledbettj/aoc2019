@@ -7,7 +7,8 @@ use num_traits::cast::FromPrimitive;
 #[derive(Debug,Clone,Copy,PartialEq,FromPrimitive)]
 pub enum AddressMode {
     Position  = 0,
-    Immediate = 1
+    Immediate = 1,
+    Relative  = 2
 }
 
 #[derive(Debug,Clone,Copy,PartialEq,FromPrimitive)]
@@ -20,6 +21,7 @@ pub enum OpCode {
     JmpFalse = 6,
     LessThan = 7,
     Equals   = 8,
+    SetBase  = 9,
     Halt     = 99
 }
 
