@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate num_derive;
+#[macro_use]
+extern crate lazy_static;
 
 #[allow(dead_code)]
 mod day1;
@@ -12,3 +14,4 @@ mod day7;
 mod day8;
 mod day9;
 mod day10;
+mod day12;
