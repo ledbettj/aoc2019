@@ -2,15 +2,16 @@ const INPUT : &'static str = include_str!("../inputs/day12.txt");
 
 use std::convert::TryFrom;
 use regex::Regex;
+use std::collections::HashSet;
 
-#[derive(Debug,PartialEq,Clone,Copy)]
+#[derive(Debug,PartialEq,Clone,Copy,Eq,Hash)]
 struct Vec3d {
     x: isize,
     y: isize,
     z: isize
 }
 
-#[derive(Debug,PartialEq,Copy,Clone)]
+#[derive(Debug,PartialEq,Copy,Clone,Eq,Hash)]
 struct Moon {
     pos: Vec3d,
     vel: Vec3d
@@ -175,7 +176,36 @@ mod tests {
             .map(|m| m.total_energy())
             .sum();
 
-        assert_eq!(energy, 179);
+        assert_eq!(energy, 7758);
 
+    }
+
+    #[test]
+    fn p2_solution() {
+        let mut moons = INPUT
+            .lines()
+            .map(|line| Moon::new(Vec3d::try_from(line).unwrap()))
+            .collect::<Vec<Moon>>();
+
+        let mut set = HashSet::new();
+        set.insert(moons.clone());
+        let mut count : usize = 0;
+
+        loop {
+            moons = Moon::step(&moons);
+            count += 1;
+
+            if set.contains(&moons) {
+                break;
+            }
+
+            if count % 100_000 == 0 {
+                println!("{}", count);
+            }
+
+            set.insert(moons.clone());
+        }
+
+        assert_eq!(count, 0);
     }
 }
