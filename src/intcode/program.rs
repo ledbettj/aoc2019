@@ -39,7 +39,7 @@ impl Program {
         v
     }
 
-    fn set_mem(&mut self, index: usize, value: isize) {
+    pub fn set_mem(&mut self, index: usize, value: isize) {
         self.bytes.insert(index, value);
     }
 
