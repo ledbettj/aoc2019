@@ -19,7 +19,7 @@ pub fn decode_layers(input: &str, w: usize, h: usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-pub fn print_layer(layer: &Vec<usize>, w: usize, h: usize) {
+pub fn print_layer(layer: &Vec<usize>, w: usize, _h: usize) {
     layer
         .chunks(w)
         .for_each(|chunk|{

@@ -1,6 +1,6 @@
 const INPUT : &'static str = include_str!("../inputs/day10.txt");
 
-use std::collections::{HashSet,HashMap,VecDeque};
+use std::collections::HashSet;
 
 type Point = (i32, i32);
 
@@ -12,7 +12,7 @@ pub fn load_points(input: &str) -> Vec<Point> {
             row
                 .chars()
                 .enumerate()
-                .filter(|&(index, ch)| ch == '#')
+                .filter(|&(_, ch)| ch == '#')
                 .map(|(index, _)| (index as i32, y as i32))
                 .collect::<Vec<Point>>()
 

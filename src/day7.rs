@@ -33,7 +33,7 @@ impl Amp {
 
     pub fn new_array(program: &Program, count: usize) -> Vec<Amp> {
         (0..count)
-            .map(|i| Amp::new(program.clone()) )
+            .map(|_| Amp::new(program.clone()) )
             .collect()
     }
 
