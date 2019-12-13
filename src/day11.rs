@@ -1,7 +1,7 @@
 const INPUT : &'static str = include_str!("../inputs/day11.txt");
 
 use std::collections::HashMap;
-use crate::day5::{Program, ProgramState, InvalidInstruction};
+use crate::intcode::{Program, Computer, InvalidInstruction, IOEvent};
 
 type Point = (isize, isize);
 
@@ -87,37 +87,28 @@ impl Robot {
     }
 
     pub fn execute(&mut self, mut p: Program) -> Result<(), InvalidInstruction> {
-        let mut next_input = None;
-
-        loop {
-            match p.step(next_input)? {
-                ProgramState::Halted => {
-                    return Ok(())
-                }
-                ProgramState::Blocked => {
-                    // needs input
+        Computer::run(&mut p, |event|{
+            match event {
+                IOEvent::Input => {
                     let color = *self.grid.get(&self.pos).unwrap_or(&BLACK);
-                    next_input = Some(color);
-                },
-                ProgramState::Running(None) => {
-                    next_input = None;
-                },
-                ProgramState::Running(Some(v)) => {
-                    next_input = None;
+                    Some(color)
+                }
+                IOEvent::Output(output) => {
                     match self.state {
                         RoboState::Paint => {
-                            self.paint(self.pos, v);
+                            self.paint(self.pos, output);
                             self.state = RoboState::Turn;
                         },
                         RoboState::Turn => {
-                            self.turn(v);
+                            self.turn(output);
                             self.forward();
                             self.state = RoboState::Paint;
                         }
-                    }
+                    };
+                    None
                 }
             }
-        }
+        })
     }
 }
 
