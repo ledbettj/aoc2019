@@ -30,6 +30,34 @@ impl Robot {
         }
     }
 
+    pub fn print(&self) {
+        let min_x = self.grid.keys().min_by_key(|p| p.0).unwrap().0;
+        let max_x = self.grid.keys().max_by_key(|p| p.0).unwrap().0;
+        let min_y = self.grid.keys().min_by_key(|p| p.1).unwrap().1;
+        let max_y = self.grid.keys().max_by_key(|p| p.1).unwrap().1;
+
+        for y in min_y..(max_y + 1) {
+            for x in min_x..(max_x + 1) {
+                let v = *self.grid.get(&(x, y)).unwrap_or(&BLACK);
+
+                match v {
+                    WHITE => {
+                        print!("#");
+                    },
+                    BLACK => {
+                        print!(" ");
+                    },
+                    _ => unreachable!()
+                };
+            }
+            println!("");
+        }
+    }
+
+    pub fn paint(&mut self, pos: Point, color: isize) {
+        self.grid.insert(pos, color);
+    }
+
     pub fn painted_count(&self) -> usize {
         self.grid.len()
     }
@@ -78,7 +106,7 @@ impl Robot {
                     next_input = None;
                     match self.state {
                         RoboState::Paint => {
-                            self.grid.insert(self.pos, v);
+                            self.paint(self.pos, v);
                             self.state = RoboState::Turn;
                         },
                         RoboState::Turn => {
@@ -99,12 +127,23 @@ mod test {
     use super::*;
 
     #[test]
-    fn p1_example() {
+    fn p1_solution() {
         let mut r = Robot::new();
         let p = Program::parse(INPUT).expect("Invalid program");
         r.execute(p).expect("Failed to execute program");
 
-        assert_eq!(r.painted_count(), 0);
+        assert_eq!(r.painted_count(), 1907);
+    }
+
+    #[test]
+    fn p2_solution() {
+        let mut r = Robot::new();
+        let p = Program::parse(INPUT).expect("Invalid program");
+
+        r.paint((0, 0), WHITE);
+        r.execute(p).expect("Failed to execute program");
+
+        r.print();
     }
 
 }
