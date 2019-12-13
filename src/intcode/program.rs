@@ -13,9 +13,9 @@ pub enum ProgramState {
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Program {
-    bytes: HashMap<usize, isize>,
-    ip:    usize,
-    base:  isize
+    mem:  HashMap<usize, isize>,
+    ip:   usize,
+    base: isize
 }
 
 impl Program {
@@ -31,82 +31,32 @@ impl Program {
                 }
             })
             .collect::<Result<HashMap<usize, isize>, ParseIntError>>()?;
-        Ok(Program { bytes: p, ip: 0, base: 0 })
+
+        Ok(Program { mem: p, ip: 0, base: 0 })
     }
 
     fn get_mem(&self, index: usize) -> isize {
-        let v = *self.bytes.get(&index).unwrap_or(&0);
-        v
+        *self.mem.get(&index).unwrap_or(&0)
     }
 
     pub fn set_mem(&mut self, index: usize, value: isize) {
-        self.bytes.insert(index, value);
+        self.mem.insert(index, value);
     }
 
     pub fn step(&mut self, input: Option<isize>) -> Result<ProgramState, InvalidInstruction> {
         let instr = Instruction::try_from(self.get_mem(self.ip) as usize)?;
 
         match instr.opcode {
-            OpCode::Add => {
-                let v3 = self.load_address(self.get_mem(self.ip + 3), instr.modes[2]);
-                let new = self.eval_binary(&instr, self.ip, |a, b| a + b);
-                self.set_mem(v3 as usize, new);
-                self.ip += 4;
-            },
-            OpCode::Multiply => {
-                let v3 = self.load_address(self.get_mem(self.ip + 3), instr.modes[2]);
-                let new = self.eval_binary(&instr, self.ip, |a, b| a * b);
-                self.set_mem(v3 as usize, new);
-                self.ip += 4;
-            },
-            OpCode::Input => {
-                if input.is_none() {
-                    return Ok(ProgramState::Blocked);
-                }
-                let v1 = self.load_address(self.get_mem(self.ip + 1), instr.modes[0]);
-                self.set_mem(v1 as usize, input.unwrap());
-                self.ip += 2;
-            },
-            OpCode::Output => {
-                let v1 = self.load_argument(self.get_mem(self.ip + 1),
-                                            instr.modes[0]);
-                self.ip += 2;
-                return Ok(ProgramState::Running(Some(v1)))
-            },
-            OpCode::JmpTrue => {
-                let cp = self.ip;
-                self.ip = self.eval_binary(&instr, self.ip, |a, b|{
-                    if a != 0 { b as usize } else { cp + 3 }
-                });
-            },
-            OpCode::JmpFalse => {
-                let cp = self.ip;
-                self.ip = self.eval_binary(&instr, self.ip, |a, b|{
-                    if a == 0 { b as usize } else { cp + 3 }
-                });
-            },
-            OpCode::LessThan => {
-                let v3 = self.load_address(self.get_mem(self.ip + 3), instr.modes[2]);
-                let new = self.eval_binary(&instr, self.ip, |a, b|{
-                    if a < b { 1 } else { 0 }
-                });
-                self.set_mem(v3 as usize, new);
-                self.ip += 4;
-            },
-            OpCode::Equals => {
-                let v3 = self.load_address(self.get_mem(self.ip + 3), instr.modes[2]);
-                let new = self.eval_binary(&instr, self.ip, |a, b|{
-                    if a == b { 1 } else { 0 }
-                });
-                self.set_mem(v3 as usize, new);
-                self.ip += 4;
-            },
-            OpCode::SetBase => {
-                let v1 = self.load_argument(self.get_mem(self.ip + 1), instr.modes[0]);
-                self.base += v1;
-                self.ip += 2;
-            },
-            OpCode::Halt => return Ok(ProgramState::Halted)
+            OpCode::Add      => self.eval_basic(&instr, |a, b| a + b)?,
+            OpCode::Multiply => self.eval_basic(&instr, |a, b| a * b)?,
+            OpCode::Input    => if !self.eval_input(&instr, &input)? { return Ok(ProgramState::Blocked); },
+            OpCode::Output   => return Ok(ProgramState::Running(Some(self.eval_output(&instr)))),
+            OpCode::JmpTrue  => self.eval_jmp(&instr, |a, b| if a != 0 { Some(b) } else { None }),
+            OpCode::JmpFalse => self.eval_jmp(&instr, |a, b| if a == 0 { Some(b) } else { None }),
+            OpCode::LessThan => self.eval_basic(&instr, |a, b| if a < b { 1 } else { 0 })?,
+            OpCode::Equals   => self.eval_basic(&instr, |a, b| if a == b { 1 } else { 0 })?,
+            OpCode::SetBase  => self.eval_set_base(&instr),
+            OpCode::Halt     => return Ok(ProgramState::Halted)
         };
 
         Ok(ProgramState::Running(None))
@@ -133,29 +83,67 @@ impl Program {
         Ok(results)
     }
 
-    fn eval_binary<F, T>(&mut self, instr: &Instruction, index: usize, f: F) -> T
-        where F : Fn(isize, isize) -> T
-    {
-        let v1 = self.load_argument(self.get_mem(index + 1), instr.modes[0]);
-        let v2 = self.load_argument(self.get_mem(index + 2), instr.modes[1]);
-        f(v1, v2)
+    fn eval_basic<F>(&mut self, instr: &Instruction, f: F) -> Result<(), InvalidInstruction>
+    where F : Fn(isize, isize) -> isize {
+        let arg1 = self.load_argument(self.get_mem(self.ip + 1), instr.modes[0]);
+        let arg2 = self.load_argument(self.get_mem(self.ip + 2), instr.modes[1]);
+        let addr = self.load_address(self.get_mem(self.ip + 3),  instr.modes[2])? as usize;
+
+        let value = f(arg1, arg2);
+        self.set_mem(addr, value);
+        self.ip += 4;
+
+        Ok(())
     }
 
-    pub fn load_argument(&self, value: isize, mode: AddressMode) -> isize {
-        let v = match mode {
+    fn eval_jmp<F>(&mut self, instr: &Instruction, f: F)
+    where F : Fn(isize, isize) -> Option<isize> {
+        let arg1 = self.load_argument(self.get_mem(self.ip + 1), instr.modes[0]);
+        let arg2 = self.load_argument(self.get_mem(self.ip + 2), instr.modes[1]);
+
+        self.ip = match f(arg1, arg2) {
+            Some(v) => v as usize,
+            None    => self.ip + 3
+        };
+    }
+
+    fn eval_set_base(&mut self, instr: &Instruction) {
+        let arg = self.load_argument(self.get_mem(self.ip + 1), instr.modes[0]);
+        self.base += arg;
+        self.ip += 2;
+    }
+
+    fn eval_input(&mut self, instr: &Instruction, input: &Option<isize>) -> Result<bool, InvalidInstruction> {
+        if input.is_none() {
+            return Ok(false);
+        }
+
+        let arg = self.load_address(self.get_mem(self.ip + 1), instr.modes[0])?;
+        self.set_mem(arg as usize, input.unwrap());
+        self.ip += 2;
+
+        Ok(true)
+    }
+
+    fn eval_output(&mut self, instr: &Instruction) -> isize {
+        let arg = self.load_argument(self.get_mem(self.ip + 1), instr.modes[0]);
+        self.ip += 2;
+        return arg;
+    }
+
+    fn load_argument(&self, value: isize, mode: AddressMode) -> isize {
+        match mode {
             AddressMode::Position  => self.get_mem(value as usize),
             AddressMode::Immediate => value,
             AddressMode::Relative  => self.get_mem((self.base + value) as usize)
-        };
-//        println!("load_argument: {}, {:?} => {}", value, mode, v);
-        v
+        }
     }
 
-    pub fn load_address(&self, value: isize, mode: AddressMode) -> usize {
+    fn load_address(&self, value: isize, mode: AddressMode) -> Result<usize, InvalidInstruction> {
         match mode {
-            AddressMode::Position  => value as usize,
-            AddressMode::Relative  => (self.base + value) as usize,
-            AddressMode::Immediate => panic!("cannot get address of Immediate mode")
+            AddressMode::Position  => Ok(value as usize),
+            AddressMode::Relative  => Ok((self.base + value) as usize),
+            AddressMode::Immediate => Err(InvalidInstruction::AttemptedImmediateLoad)
         }
     }
 }

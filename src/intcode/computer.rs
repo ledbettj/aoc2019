@@ -14,16 +14,16 @@ impl Computer {
         let mut next_input = None;
 
         loop {
-            match program.step(next_input)? {
-                ProgramState::Halted => { return Ok(()); },
-                ProgramState::Blocked => { next_input = io_fn(IOEvent::Input); },
-                ProgramState::Running(None) => { next_input = None; },
-                ProgramState::Running(Some(value)) => {
-                    io_fn(IOEvent::Output(value));
-                    next_input = None;
-                }
+            let state = program.step(next_input)?;
+            next_input = None;
+
+            match state {
+                ProgramState::Halted           => { return Ok(()) },
+                ProgramState::Blocked          => { next_input = io_fn(IOEvent::Input) },
+                ProgramState::Running(None)    => {  },
+                ProgramState::Running(Some(v)) => { io_fn(IOEvent::Output(v)); }
             };
-        }
+        };
     }
 
 }

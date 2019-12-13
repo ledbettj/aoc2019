@@ -34,7 +34,8 @@ pub struct Instruction {
 #[derive(Debug,PartialEq)]
 pub enum InvalidInstruction {
     InvalidOpcode(usize),
-    InvalidAddressMode(usize)
+    InvalidAddressMode(usize),
+    AttemptedImmediateLoad
 }
 
 // Required for Error trait
