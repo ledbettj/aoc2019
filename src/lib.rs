@@ -4,6 +4,9 @@ extern crate num_derive;
 extern crate lazy_static;
 
 #[allow(dead_code)]
+mod intcode;
+
+#[allow(dead_code)]
 mod day1;
 mod day2;
 mod day3;

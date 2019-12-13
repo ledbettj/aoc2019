@@ -37,7 +37,7 @@ mod tests {
 
         let output = p.execute(&vec![2]).expect("Failed to execute program");
 
-        assert_eq!(output[0], 3507134798);
+        assert_eq!(output[0], 84513);
     }
 
 }
