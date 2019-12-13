@@ -2,7 +2,6 @@ const INPUT : &'static str = include_str!("../inputs/day12.txt");
 
 use std::convert::TryFrom;
 use regex::Regex;
-use std::collections::HashSet;
 
 #[derive(Debug,PartialEq,Clone,Copy,Eq,Hash)]
 struct Vec3d {
@@ -22,6 +21,27 @@ impl Moon {
         Moon {
             pos: pos,
             vel: Vec3d { x: 0, y: 0, z: 0 }
+        }
+    }
+
+    pub fn x_only(&self) -> Moon {
+        Moon {
+            pos: Vec3d { x: self.pos.x, y: 0, z: 0 },
+            vel: Vec3d { x: self.vel.x, y: 0, z: 0 }
+        }
+    }
+
+    pub fn y_only(&self) -> Moon {
+        Moon {
+            pos: Vec3d { x: 0, y: self.pos.y, z: 0 },
+            vel: Vec3d { x: 0, y: self.vel.y, z: 0 }
+        }
+    }
+
+    pub fn z_only(&self) -> Moon {
+        Moon {
+            pos: Vec3d { x: 0, y: 0, z: self.pos.z },
+            vel: Vec3d { x: 0, y: 0, z: self.vel.z }
         }
     }
 
@@ -80,6 +100,28 @@ impl Moon {
     pub fn total_energy(&self) -> usize {
         self.potential_energy() * self.kinetic_energy()
     }
+
+    pub fn vec_x_only(moons: &Vec<Moon>) -> Vec<Moon> {
+        moons
+            .iter()
+            .map(|m| m.x_only())
+            .collect()
+    }
+
+    pub fn vec_y_only(moons: &Vec<Moon>) -> Vec<Moon> {
+        moons
+            .iter()
+            .map(|m| m.y_only())
+            .collect()
+    }
+
+    pub fn vec_z_only(moons: &Vec<Moon>) -> Vec<Moon> {
+        moons
+            .iter()
+            .map(|m| m.z_only())
+            .collect()
+    }
+
 
     pub fn step(moons: &Vec<Moon>) -> Vec<Moon> {
         let result = moons
@@ -187,25 +229,49 @@ mod tests {
             .map(|line| Moon::new(Vec3d::try_from(line).unwrap()))
             .collect::<Vec<Moon>>();
 
-        let mut set = HashSet::new();
-        set.insert(moons.clone());
-        let mut count : usize = 0;
+        let initial_x = Moon::vec_x_only(&moons);
+        let initial_y = Moon::vec_y_only(&moons);
+        let initial_z = Moon::vec_z_only(&moons);
+
+        let mut x_count = 0;
+        let mut y_count = 0;
+        let mut z_count = 0;
+
+        let mut prev = initial_x.clone();
+        let mut next;
 
         loop {
-            moons = Moon::step(&moons);
-            count += 1;
-
-            if set.contains(&moons) {
+            next = Moon::step(&prev);
+            x_count += 1;
+            if next == initial_x {
                 break;
             }
-
-            if count % 100_000 == 0 {
-                println!("{}", count);
-            }
-
-            set.insert(moons.clone());
+            prev = next;
         }
 
-        assert_eq!(count, 0);
+        prev = initial_y.clone();
+
+        loop {
+            next = Moon::step(&prev);
+            y_count += 1;
+            if next == initial_y {
+                break;
+            }
+            prev = next;
+        }
+
+        prev = initial_z.clone();
+
+        loop {
+            next = Moon::step(&prev);
+            z_count += 1;
+            if next == initial_z {
+                break;
+            }
+            prev = next;
+        }
+
+        println!("x {} y {} z {}", x_count, y_count, z_count);
+        // now paste these numbers into a LCM calculator and get the result 354_540_398_381_256, 0
     }
 }
