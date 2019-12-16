@@ -64,20 +64,66 @@ impl ReactionMap {
 
     // How many units of `units` does it cost to produce result
     pub fn cost(&self, result: &Reagent, units: &str) -> usize {
-
+        let mut leftover : HashMap<String, usize> = HashMap::new();
         let mut required : HashMap<String, usize> = HashMap::new();
-        let mut ore = 0;
+        let mut total_cost = 0;
 
         required.insert(result.chemical.clone(), result.count);
 
         while !required.is_empty() {
-            for (chemical, count) in required.iter_mut() {
-                
+            let mut to_insert = vec![];
 
+            for (chemical, count) in required.iter_mut() {
+                let reaction = self.map.get(chemical).unwrap();
+                let mut zero = 0;
+                let left = leftover.get_mut(chemical).unwrap_or(&mut zero);
+
+                if *left >= *count {
+                    *count = 0 ;
+                    *left -= *count;
+                } else if *left > 0 {
+                    *count -= *left;
+                    *left = 0;
+                }
+
+                if *count == 0 {
+                    continue;
+                }
+
+                let mult = (*count as f32 / reaction.output.count as f32).ceil() as usize;
+                let leftover_count = (reaction.output.count * mult) - *count;
+
+                leftover
+                    .entry(reaction.output.chemical.clone())
+                    .and_modify(|v| *v += leftover_count)
+                    .or_insert(leftover_count);
+
+                println!("use {} to produce {} {} ({} leftover)", reaction, mult * reaction.output.count, chemical, leftover_count);
+
+                to_insert.extend(reaction
+                                 .input
+                                 .iter()
+                                 .map(|reagent| Reagent::new(&reagent.chemical, reagent.count * mult)));
+
+                *count = 0;
             }
+
+            for reagent in &to_insert {
+                if reagent.chemical == units {
+                    total_cost += reagent.count;
+                    continue;
+                }
+
+                println!("inserting {}", reagent);
+                required.entry(reagent.chemical.clone())
+                    .and_modify(|v| *v += reagent.count)
+                    .or_insert(reagent.count);
+            }
+
+            required.retain(|k, v| *v != 0);
         }
 
-        ore
+        total_cost
     }
 
     fn parse(input: &str) -> Result<ReactionMap, nom::Err<(&str, nom::error::ErrorKind)>> {
@@ -143,11 +189,15 @@ mod test {
             map.cost(&Reagent::new("FUEL", 1), "ORE"),
             165
         );
-    }
 
+    }
     #[test]
     fn p1_solution() {
         let map = ReactionMap::parse(INPUT).expect("Failed to parse map!");
+        assert_eq!(
+            map.cost(&Reagent::new("FUEL", 1), "ORE"),
+            165
+        );
     }
 
 }
