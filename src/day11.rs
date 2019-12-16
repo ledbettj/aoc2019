@@ -87,7 +87,7 @@ impl Robot {
     }
 
     pub fn execute(&mut self, mut p: Program) -> Result<(), InvalidInstruction> {
-        Computer::run(&mut p, |event|{
+        Computer::run(&mut p, |event, _|{
             match event {
                 IOEvent::Input => {
                     let color = *self.grid.get(&self.pos).unwrap_or(&BLACK);

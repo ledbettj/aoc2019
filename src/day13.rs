@@ -57,7 +57,7 @@ impl Arcade {
         let mut ball = (0, 0);
         let mut paddle = (0, 0);
 
-        Computer::run( p, |event| {
+        Computer::run( p, |event, _| {
             match event {
                 IOEvent::Input => {
                     // let mut s = String::new();
