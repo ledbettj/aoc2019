@@ -46,7 +46,7 @@ impl Arcade {
             println!("");
         }
     }
-    
+
     pub fn initialize(p: &mut Program) -> Result<Arcade, InvalidInstruction> {
         let mut grid = HashMap::new();
         let mut state = LoadState::XPos;

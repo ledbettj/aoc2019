@@ -2,7 +2,7 @@ const INPUT : &'static str = include_str!("../inputs/day15.txt");
 
 
 use crate::intcode::{Program,Computer,InvalidInstruction,IOEvent};
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 use rand::prelude::*;
 
 type Point = (isize, isize);
@@ -15,37 +15,18 @@ const UNKNOWN : char = '?';
 
 struct Area {
     map: HashMap<Point, char>,
-    droid: Point,
-    dir:   Point,
-    translate: HashMap<Point, isize>
+    droid: Point
 }
 
 impl Area {
     pub fn new() -> Area {
-        let mut translate = HashMap::new();
-        translate.insert((0, -1), 1);
-        translate.insert((1, 0), 4);
-        translate.insert((0, 1), 2);
-        translate.insert((-1, 0), 3);
 
         let mut map = HashMap::new();
         map.insert((0, 0), OPEN);
         Area {
             map: map,
-            droid: (0, 0),
-            dir: (0, -1),
-            translate: translate
+            droid: (0, 0)
         }
-    }
-
-    pub fn turn(&mut self) {
-        self.dir = (-self.dir.1, self.dir.0);
-    }
-
-    pub fn left_of_current(&self) -> Point {
-        let (dx, dy) = self.droid;
-        let (ox, oy) = (self.dir.0, self.dir.1);
-        (dx + ox, dy + oy)
     }
 
     pub fn print(&self) {
@@ -68,7 +49,7 @@ impl Area {
         println!("");
     }
 
-    pub fn find_oxygen(&mut self, mut p: &mut Program) -> Result<(),InvalidInstruction> {
+    pub fn find_oxygen(&mut self, mut p: &mut Program) -> Result<Point,InvalidInstruction> {
         let mut next = (0, 0);
         let mut rng = rand::thread_rng();
         Computer::run(&mut p, |event, computer| {
@@ -88,6 +69,7 @@ impl Area {
                             self.droid = next;
                             computer.abort();
                             println!("found oxygen at {:?}", next);
+                            self.print();
                         },
                         _ => unreachable!()
                     };
@@ -121,7 +103,40 @@ impl Area {
             }
         })?;
 
-        Ok(())
+        Ok(self.droid)
+    }
+
+    pub fn min_distance(&self, from: Point, to: Point, mut used: &mut HashSet<Point>) -> Option<usize> {
+        if from == to {
+            println!("found dest at {:?}", from);
+            return Some(0);
+        }
+
+        let neighbors = vec![(0, -1), (0, 1), (-1, 0), (1, 0)];
+        let neighbors = neighbors
+            .iter()
+            .filter_map(|&(px, py)|{
+                let point = (from.0 + px, from.1 + py);
+                let value = self.map.get(&point).unwrap_or(&UNKNOWN);
+                let ok = (value == &OPEN || value == &OXYGEN) && used.insert(point);
+                if ok {
+                    Some(point)
+                } else {
+                    None
+                }
+            })
+            .inspect(|p| println!("exploring {:?}", p))
+            .collect::<Vec<Point>>();
+
+        neighbors
+            .iter()
+            .filter_map(|&point|{
+                match self.min_distance(point, to, &mut used) {
+                    Some(v) => Some(v + 1),
+                    None => None
+                }
+            })
+            .min()
     }
 }
 
@@ -135,6 +150,10 @@ mod test {
         let mut p = Program::parse(INPUT).expect("Failed to parse program");
         let mut a = Area::new();
 
-        a.find_oxygen(&mut p);
+        let oxygen = a.find_oxygen(&mut p).unwrap();
+
+        let distance = a.min_distance((0, 0), oxygen, &mut HashSet::new());
+
+        assert_eq!(distance, Some(244));
     }
 }
