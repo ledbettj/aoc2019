@@ -35,16 +35,17 @@ impl Arcade {
                 let v = *grid.get(&(x, y)).unwrap_or(&EMPTY);
 
                 match v {
-                    EMPTY => print!(" "),
-                    WALL  => print!("#"),
-                    BLOCK => print!("."),
+                    EMPTY  => print!(" "),
+                    WALL   => print!("#"),
+                    BLOCK  => print!("."),
                     PADDLE => print!("-"),
-                    BALL => print!("o"),
+                    BALL   => print!("o"),
                     _ => unreachable!()
                 };
             }
             println!("");
         }
+        println!("");
     }
 
     pub fn initialize(p: &mut Program) -> Result<Arcade, InvalidInstruction> {
@@ -60,8 +61,8 @@ impl Arcade {
         Computer::run( p, |event, _| {
             match event {
                 IOEvent::Input => {
-                    // let mut s = String::new();
-                    // io::stdin().read_line(&mut s).unwrap();
+                    //  let mut s = String::new();
+                    // std::io::stdin().read_line(&mut s).unwrap();
                     // match s.trim() {
                     //     "l" => Some(-1),
                     //     "r" => Some(1),
